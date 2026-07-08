@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WoodCraft — Furniture Quotation System</title>
+<meta name="description" content="Custom furniture quotation with 3D preview. Choose your furniture, enter your dimensions, get instant pricing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include 'nav.html' %}
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-text">
+    <span class="hero-badge">✨ Premium Furniture Quotation</span>
+    <h1>Design Your <br><span class="gradient-text">Dream Furniture</span></h1>
+    <p>Select any item • Enter your size • Get instant 3D preview + quotation</p>
+    <a href="#categories" class="btn-primary">Browse Categories ↓</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><span>{{ furniture_data|length }}</span><label>Categories</label></div>
+    <div class="stat"><span>150+</span><label>Item Types</label></div>
+    <div class="stat"><span>3D</span><label>Live Preview</label></div>
+  </div>
+</section>
+
+<!-- CATEGORIES GRID -->
+<section class="section" id="categories">
+  <h2 class="section-title">Select a Category</h2>
+  <div class="cat-grid">
+    {% for cat_name, subcats in furniture_data.items() %}
+    {% set total = namespace(count=0) %}
+    {% for sub, items in subcats.items() %}{% set total.count = total.count + items|length %}{% endfor %}
+    <a href="/category/{{ cat_name }}" class="cat-card" id="cat-{{ loop.index }}">
+      <div class="cat-emoji">{{ emojis.get(cat_name, '🪑') }}</div>
+      <div class="cat-name">{{ cat_name }}</div>
+      <div class="cat-count">{{ subcats|length }} sub-types · {{ total.count }} items</div>
+      <div class="cat-arrow">→</div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section how-section">
+  <h2 class="section-title">How It Works</h2>
+  <div class="steps-row">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <div class="step-icon">🗂️</div>
+      <h3>Select Item</h3>
+      <p>Browse categories and pick your furniture type</p>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <div class="step-icon">📐</div>
+      <h3>Enter Size</h3>
+      <p>Input custom Length × Width × Height in feet</p>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="step-icon">🎨</div>
+      <h3>Choose Material</h3>
+      <p>Select material & finish as per your budget</p>
+    </div>
+    <div class="step-arrow">→</div>
+    <div class="step-card">
+      <div class="step-num">04</div>
+      <div class="step-icon">📊</div>
+      <h3>Get Quotation</h3>
+      <p>Instant 3D preview + detailed price breakdown</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <p>🪵 WoodCraft Furniture &nbsp;|&nbsp; Demo System &nbsp;|&nbsp; All prices are estimates</p>
+</footer>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

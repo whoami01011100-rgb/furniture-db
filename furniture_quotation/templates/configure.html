@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configure {{ item.name }} — WoodCraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include 'nav.html' %}
+
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="/">Home</a> › <a href="/category/{{ item.category }}">{{ item.category }}</a> › {{ item.name }}
+  </div>
+  <h1>{{ item.emoji }} {{ item.name }}</h1>
+  <p>Enter your custom dimensions and preferences below</p>
+</div>
+
+<section class="section">
+<div class="form-wrapper">
+
+  <!-- Standard size hint -->
+  <div class="hint-box">
+    <span class="hint-icon">💡</span>
+    <div>
+      <strong>Standard size:</strong> L {{ item.std_L }} ft &nbsp;×&nbsp; W {{ item.std_W }} ft &nbsp;×&nbsp; H {{ item.std_H }} ft
+      <br><small style="color:#aaa">You can enter any custom size below</small>
+    </div>
+    <button class="btn-outline-sm" onclick="fillStandard()" type="button">Use Standard</button>
+  </div>
+
+  <form action="/generate" method="POST" id="quoteForm">
+    <input type="hidden" name="item_id"   value="{{ item.id }}">
+    <input type="hidden" name="item_name" value="{{ item.name }}">
+    <input type="hidden" name="category"  value="{{ item.category }}">
+
+    <!-- Customer Info -->
+    <div class="form-section">
+      <h3 class="form-section-title">👤 Customer Info</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="customer_name">Customer Name</label>
+          <input type="text" id="customer_name" name="customer_name"
+                 placeholder="Your name" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone (optional)</label>
+          <input type="tel" id="phone" name="phone"
+                 placeholder="+91 98765 43210">
+        </div>
+      </div>
+    </div>
+
+    <!-- Dimensions -->
+    <div class="form-section">
+      <h3 class="form-section-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        📐 Custom Dimensions
+        <!-- Unit Selector -->
+        <select id="unitSelect" onchange="changeUnit(this.value)"
+          style="margin-left:auto;padding:5px 12px;border-radius:8px;border:1.5px solid #D4AF37;
+                 background:#1a1a2e;color:#D4AF37;font-size:0.82em;font-weight:600;
+                 cursor:pointer;outline:none;">
+          <option value="ft"  selected>ft — Feet</option>
+          <option value="cm">cm — Centimeter</option>
+          <option value="m">m &nbsp;— Meter</option>
+          <option value="mm">mm — Millimeter</option>
+        </select>
+      </h3>
+
+      <!-- Hidden inputs (always in ft) sent to backend -->
+      <input type="hidden" id="length" name="length" value="{{ item.std_L }}">
+      <input type="hidden" id="width"  name="width"  value="{{ item.std_W }}">
+      <input type="hidden" id="height" name="height" value="{{ item.std_H }}">
+
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label for="raw_length" id="label_length">Length (ft)</label>
+          <div class="input-wrap">
+            <input type="number" id="raw_length" step="0.01" min="0"
+                   value="{{ item.std_L }}" required oninput="updateLive()">
+            <span class="unit-tag" id="unit_L">ft</span>
+          </div>
+          <small class="dim-hint">← {{ dim_labels(item.name)[0] }}</small>
+        </div>
+        <div class="form-group">
+          <label for="raw_width" id="label_width">Width / Depth (ft)</label>
+          <div class="input-wrap">
+            <input type="number" id="raw_width" step="0.01" min="0"
+                   value="{{ item.std_W }}" required oninput="updateLive()">
+            <span class="unit-tag" id="unit_W">ft</span>
+          </div>
+          <small class="dim-hint">← {{ dim_labels(item.name)[1] }}</small>
+        </div>
+        <div class="form-group">
+          <label for="raw_height" id="label_height">Height (ft)</label>
+          <div class="input-wrap">
+            <input type="number" id="raw_height" step="0.01" min="0"
+                   value="{{ item.std_H }}" required oninput="updateLive()">
+            <span class="unit-tag" id="unit_H">ft</span>
+          </div>
+          <small class="dim-hint">← {{ dim_labels(item.name)[2] }}</small>
+        </div>
+      </div>
+
+      <!-- Live dimension display -->
+      <div class="dim-live" id="dimLive">
+        <span id="dL">{{ item.std_L }}</span> <span id="dU_L">ft</span> &nbsp;(L) &nbsp;×&nbsp;
+        <span id="dW">{{ item.std_W }}</span> <span id="dU_W">ft</span> &nbsp;(W) &nbsp;×&nbsp;
+        <span id="dH">{{ item.std_H }}</span> <span id="dU_H">ft</span> &nbsp;(H)
+      </div>
+    </div>
+
+    <!-- Material -->
+    <div class="form-section">
+      <h3 class="form-section-title">🪵 Material</h3>
+      <div class="radio-group" id="materialGroup">
+        {% for mat in materials %}
+        <label class="radio-card {% if loop.first %}selected{% endif %}" id="mat-{{ loop.index }}">
+          <input type="radio" name="material" value="{{ mat }}"
+                 {% if loop.first %}checked{% endif %}
+                 onchange="selectCard(this,'materialGroup')">
+          <span class="rc-name">{{ mat }}</span>
+          <span class="rc-badge">
+            {% if mat == 'Solid Wood' %}Premium
+            {% elif mat == 'Plywood' %}Popular
+            {% elif mat == 'MDF' %}Budget
+            {% elif mat == 'PVC / WPC' %}Moisture-proof
+            {% else %}Value{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Finish -->
+    <div class="form-section">
+      <h3 class="form-section-title">🎨 Finish</h3>
+      <div class="radio-group" id="finishGroup">
+        {% for fin in finishes %}
+        <label class="radio-card {% if loop.first %}selected{% endif %}" id="fin-{{ loop.index }}">
+          <input type="radio" name="finish" value="{{ fin }}"
+                 {% if loop.first %}checked{% endif %}
+                 onchange="selectCard(this,'finishGroup')">
+          <span class="rc-name">{{ fin }}</span>
+          <span class="rc-badge">
+            {% if fin == 'Laminate' %}Standard
+            {% elif fin == 'Veneer' %}Premium
+            {% elif fin == 'PU Paint' %}Smooth
+            {% elif fin == 'Duco Paint' %}Glossy
+            {% elif fin == 'Acrylic' %}High-end
+            {% else %}Shiny{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary btn-full" id="generateBtn">
+      <span class="btn-text">🎯 Generate 3D Preview &amp; Quotation</span>
+      <span class="btn-loader" style="display:none">⏳ Generating...</span>
+    </button>
+  </form>
+</div>
+</section>
+
+<footer class="footer">
+  <p>🪵 WoodCraft Furniture &nbsp;|&nbsp; Demo System</p>
+</footer>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<!--
+  Python se aaye data ko JavaScript mein pass karna:
+  Jinja2 template (double curly braces) syntax se Python variables
+  JS variables ban jaate hain.
+  Ye data configure.js use karti hai.
+-->
+<script>
+  // Standard dimensions → Python ke furniture_data.py se aate hain
+  var STD_L = {{ item.std_L }};
+  var STD_W = {{ item.std_W }};
+  var STD_H = {{ item.std_H }};
+</script>
+
+<!-- Configure page ka JS → static/configure.js -->
+<script src="{{ url_for('static', filename='configure.js') }}"></script>
+
+</body>
+</html>

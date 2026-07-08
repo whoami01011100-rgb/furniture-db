@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation History — WoodCraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include 'nav.html' %}
+
+<div class="page-header">
+  <h1>📋 Quotation History</h1>
+  <p>Last 50 generated quotations</p>
+</div>
+
+<section class="section">
+{% if rows %}
+<div class="table-wrap">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Item</th>
+        <th>Dimensions (ft)</th>
+        <th>Material</th>
+        <th>Finish</th>
+        <th>Total ₹</th>
+        <th>Date</th>
+        <th>PDF</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.customer }}<br><small style="color:#888">{{ row.phone }}</small></td>
+        <td><strong>{{ row.item_name }}</strong><br><small style="color:#888">{{ row.category }}</small></td>
+        <td>{{ row.length }}×{{ row.width }}×{{ row.height }}</td>
+        <td>{{ row.material }}</td>
+        <td>{{ row.finish }}</td>
+        <td class="price-cell">₹ {{ "{:,}".format(row.total_price|int) }}</td>
+        <td><small>{{ row.created_at | string | truncate(16, True, '') }}</small></td>
+        <td>
+          <!-- Har row ka PDF download link -->
+          <a href="/pdf/{{ row.id }}" class="btn-pdf-sm" title="Download PDF">
+            &#x1F4C4; PDF
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div style="font-size:3rem">📭</div>
+  <p>No quotations yet. <a href="/">Generate your first one!</a></p>
+</div>
+{% endif %}
+</section>
+
+<footer class="footer">
+  <p>🪵 WoodCraft Furniture &nbsp;|&nbsp; Demo System</p>
+</footer>
+
+</body>
+</html>

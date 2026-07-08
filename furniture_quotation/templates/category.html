@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ category }} — WoodCraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+{% include 'nav.html' %}
+
+<div class="page-header">
+  <div class="breadcrumb"><a href="/">Home</a> › {{ category }}</div>
+  <h1>{{ emoji }} {{ category }}</h1>
+  <p>Choose a furniture type below to configure your custom size</p>
+</div>
+
+<section class="section">
+  {% for subcat, items in subcategories.items() %}
+  <div class="subcat-block">
+    <h2 class="subcat-title">{{ subcat }}</h2>
+    <div class="item-grid">
+      {% for item in items %}
+      <a href="/configure/{{ item.id }}" class="item-card" id="item-{{ item.id }}">
+        <div class="item-emoji">{{ item.emoji }}</div>
+        <div class="item-name">{{ item.name }}</div>
+        <div class="item-std">
+          Std: {{ item.std_L }}×{{ item.std_W }}×{{ item.std_H }} ft
+        </div>
+        <div class="item-cta">Configure →</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<footer class="footer">
+  <p>🪵 WoodCraft Furniture &nbsp;|&nbsp; Demo System</p>
+</footer>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

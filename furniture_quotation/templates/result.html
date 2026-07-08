@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quotation Preview — WoodCraft</title>
+<meta name="description" content="Review your furniture quotation and confirm to save to database.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- Sab CSS ek file mein → static/style.css -->
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include 'nav.html' %}
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="breadcrumb"><a href="/">Home</a> &rsaquo; Quotation Preview</div>
+  <h1>Quotation Preview</h1>
+  <p>Customer: <strong>{{ customer }}</strong>
+     {% if phone %}&nbsp;&middot;&nbsp; {{ phone }}{% endif %}
+     &nbsp;&middot;&nbsp;
+     <!-- Status badge: confirmed ya preview -->
+     {% if confirmed and quote_id %}
+       <span class="badge-confirmed">&#x2714; Saved to Database #{{ quote_id }}</span>
+     {% else %}
+       <span class="badge-preview">&#x23F3; Preview Only — Not Saved Yet</span>
+     {% endif %}
+  </p>
+</div>
+
+<section class="section">
+<div class="result-layout">
+
+  <!-- ══ LEFT: 2D/3D VIEWER + SPECS ══ -->
+  <div class="result-left">
+
+    <div class="viewer-wrap">
+      <!-- Header with 2D/3D toggle -->
+      <div class="viewer-header">
+        <span id="viewerTitle">&#x1F4D0; 2D Drawing &mdash; {{ quote.item_name }}</span>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <!-- 2D / 3D toggle buttons -->
+          <div class="view-toggle">
+            <button id="btn2d" class="active" onclick="switchView('2d')">&#x1F4D0; 2D</button>
+            <button id="btn3d" onclick="switchView('3d')">&#x1F4E6; 3D</button>
+          </div>
+          <!-- 3D toolbar (hidden until 3D active) -->
+          <div class="viewer-toolbar" id="toolbar3d" style="display:none;">
+            <button id="btnAuto" onclick="toggleAutoRotate()" class="active">&#x21BB; Auto</button>
+            <button onclick="setView('front')">Front</button>
+            <button onclick="setView('side')">Side</button>
+            <button onclick="setView('top')">Top</button>
+            <button onclick="setView('iso')">&#x21BA; Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2D Panel -->
+      <div class="panel-2d visible" id="panel2d">
+        <img class="drawing-img"
+             src="data:image/png;base64,{{ drawing_b64 }}"
+             alt="2D drawing of {{ quote.item_name }}">
+      </div>
+
+      <!-- 3D Panel -->
+      <div class="panel-3d" id="panel3d">
+        <div class="viewer-pos">
+          <div id="viewer3d"></div>
+          <div class="viewer-loading" id="loadingOverlay">
+            <div class="spin">&#x2699;</div>
+            <span>Loading 3D view&hellip;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewer footer bar -->
+      <div class="viewer-footer">
+        <span class="viewer-hint" id="viewerHint">&#x1F4CF; Front elevation view</span>
+        <span class="viewer-dims">
+          {{ quote.L }}ft (L) &times; {{ quote.W }}ft (W) &times; {{ quote.H }}ft (H)
+          &nbsp;&middot;&nbsp; {{ quote.material }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Specifications table -->
+    <div class="spec-card">
+      <h3>Specifications</h3>
+      <table class="spec-table">
+        <tr><td>Item</td>         <td><strong>{{ quote.item_name }}</strong></td></tr>
+        <tr><td>Length</td>       <td>{{ quote.L }} ft</td></tr>
+        <tr><td>Width / Depth</td><td>{{ quote.W }} ft</td></tr>
+        <tr><td>Height</td>       <td>{{ quote.H }} ft</td></tr>
+        <tr><td>Material</td>     <td>{{ quote.material }}</td></tr>
+        <tr><td>Finish</td>       <td>{{ quote.finish }}</td></tr>
+        <tr><td>Board Area</td>   <td>{{ quote.board_area }} sqft</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT: PRICE CARD + ACTIONS ══ -->
+  <div class="result-right">
+    <div class="quote-card">
+      <div class="quote-header">
+        <div class="quote-logo">&#x1FAB5; WoodCraft</div>
+        {% if confirmed and quote_id %}
+          <div class="quote-ref">Saved #{{ quote_id }}</div>
+        {% else %}
+          <div class="quote-ref" style="color:#E8A020;">Preview</div>
+        {% endif %}
+      </div>
+      <h2 class="quote-item-title">{{ quote.item_name }}</h2>
+      <p class="quote-sub">{{ quote.material }} &nbsp;&middot;&nbsp; {{ quote.finish }}</p>
+
+      <!-- Price breakdown rows -->
+      <div class="price-breakdown">
+        <div class="pb-row">
+          <span>&#x1FAB5; Material Cost</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.material_cost) }}</span>
+        </div>
+        <div class="pb-row">
+          <span>&#x1F477; Labour &amp; Fitting</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.labor_cost) }}</span>
+        </div>
+        <div class="pb-row">
+          <span>&#x1F3A8; Finish &amp; Polish</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.finish_cost) }}</span>
+        </div>
+        <div class="pb-row">
+          <span>&#x1F527; Hardware</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.hardware_cost) }}</span>
+        </div>
+        <div class="pb-divider"></div>
+        <div class="pb-row pb-subtotal">
+          <span>Subtotal</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.subtotal) }}</span>
+        </div>
+        <div class="pb-row pb-gst">
+          <span>GST (18%)</span>
+          <span>&#x20B9; {{ "{:,}".format(quote.gst) }}</span>
+        </div>
+      </div>
+
+      <div class="total-box">
+        <span>Total Estimate</span>
+        <span class="total-amount">&#x20B9; {{ "{:,}".format(quote.total) }}</span>
+      </div>
+
+      <div class="disclaimer">
+        Approximate estimate. Final price may vary based on design complexity and site conditions.
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           ACTION BUTTONS
+           ══════════════════════════════════════════════ -->
+      <div class="quote-actions">
+
+        {% if confirmed and quote_id %}
+          <!-- ALREADY CONFIRMED → Show PDF download + New Quotation -->
+          <a href="/pdf/{{ quote_id }}" class="btn-pdf" id="pdfBtn">
+            &#x1F4C4; Download PDF
+          </a>
+          <a href="/" class="btn-primary">+ New Quotation</a>
+
+        {% else %}
+          <!-- NOT YET CONFIRMED → Show Confirm button -->
+          <button id="confirmBtn" class="btn-confirm" onclick="confirmQuotation()">
+            <span class="btn-text">&#x2705; Confirm &amp; Save to Database</span>
+            <span class="btn-loader" style="display:none;">&#x23F3; Saving...</span>
+          </button>
+          <a href="/" class="btn-outline">&#x2715; Cancel</a>
+        {% endif %}
+
+      </div>
+    </div>
+
+    <!-- Cost Breakdown bar chart -->
+    <div class="bar-card">
+      <h3>Cost Breakdown</h3>
+      {% set ts = quote.subtotal %}
+      <div class="bar-row">
+        <span>Material</span>
+        <div class="bar-track"><div class="bar-fill bar-mat" style="width:{{ (quote.material_cost/ts*100)|round }}%"></div></div>
+        <span class="bar-pct">{{ (quote.material_cost/ts*100)|round }}%</span>
+      </div>
+      <div class="bar-row">
+        <span>Labour</span>
+        <div class="bar-track"><div class="bar-fill bar-lab" style="width:{{ (quote.labor_cost/ts*100)|round }}%"></div></div>
+        <span class="bar-pct">{{ (quote.labor_cost/ts*100)|round }}%</span>
+      </div>
+      <div class="bar-row">
+        <span>Finish</span>
+        <div class="bar-track"><div class="bar-fill bar-fin" style="width:{{ (quote.finish_cost/ts*100)|round }}%"></div></div>
+        <span class="bar-pct">{{ (quote.finish_cost/ts*100)|round }}%</span>
+      </div>
+      <div class="bar-row">
+        <span>Hardware</span>
+        <div class="bar-track"><div class="bar-fill bar-hdw" style="width:{{ (quote.hardware_cost/ts*100)|round }}%"></div></div>
+        <span class="bar-pct">{{ (quote.hardware_cost/ts*100)|round }}%</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /result-layout -->
+</section>
+
+<footer class="footer">
+  <p>&#x1FAB5; WoodCraft Furniture &nbsp;|&nbsp; All prices are indicative estimates</p>
+</footer>
+
+<!--
+  Python se aaye data ko JavaScript mein pass karna:
+  Jinja2 template (double curly braces) syntax se Python variables JS variables ban jaate hain.
+
+  BOXES     → viewer_3d.py → get_furniture_boxes() function ka output
+  Furn_L/W/H→ User ne form mein jo size dala
+  ITEM      → furniture ka naam
+  IS_CONFIRMED → kya ye already save ho chuka hai?
+-->
+<script>
+  var BOXES        = {{ boxes_json | safe }};
+  var Furn_L       = {{ quote.L }};
+  var Furn_W       = {{ quote.W }};
+  var Furn_H       = {{ quote.H }};
+  var ITEM         = "{{ quote.item_name }}";
+  var MATERIAL     = "{{ quote.material }}";
+  var FINISH       = "{{ quote.finish }}";
+  var IS_CONFIRMED = {{ 'true' if confirmed else 'false' }};
+  var QUOTE_ID     = {% if quote_id %}{{ quote_id }}{% else %}null{% endif %};
+</script>
+
+<!-- Three.js 3D library (local file, no internet needed) -->
+<script src="{{ url_for('static', filename='three.min.js') }}"></script>
+
+<!-- 3D Viewer JS → static/viewer3d.js -->
+<script src="{{ url_for('static', filename='viewer3d.js') }}"></script>
+
+<!-- Confirm & Save logic -->
+<script src="{{ url_for('static', filename='confirm.js') }}"></script>
+
+<!-- Shared animations → static/script.js -->
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

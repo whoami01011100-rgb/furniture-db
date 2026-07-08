@@ -1,0 +1,6 @@
+flask
+matplotlib
+numpy
+mysql-connector-python
+reportlab
+Pillow
