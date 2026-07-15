@@ -10,7 +10,15 @@
 </head>
 <body>
 
-{% include 'nav.html' %}
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="brand">🪵 WoodCraft</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/history">History</a>
+    </div>
+  </div>
+</nav>
 
 <div class="page-header">
   <h1>📋 Quotation History</h1>
@@ -31,7 +39,6 @@
         <th>Finish</th>
         <th>Total ₹</th>
         <th>Date</th>
-        <th>PDF</th>
       </tr>
     </thead>
     <tbody>
@@ -39,18 +46,12 @@
       <tr>
         <td>{{ row.id }}</td>
         <td>{{ row.customer }}<br><small style="color:#888">{{ row.phone }}</small></td>
-        <td><strong>{{ row.item_name }}</strong><br><small style="color:#888">{{ row.category }}</small></td>
+        <td><strong>{{ row.item_name }}</strong></td>
         <td>{{ row.length }}×{{ row.width }}×{{ row.height }}</td>
         <td>{{ row.material }}</td>
         <td>{{ row.finish }}</td>
         <td class="price-cell">₹ {{ "{:,}".format(row.total_price|int) }}</td>
-        <td><small>{{ row.created_at | string | truncate(16, True, '') }}</small></td>
-        <td>
-          <!-- Har row ka PDF download link -->
-          <a href="/pdf/{{ row.id }}" class="btn-pdf-sm" title="Download PDF">
-            &#x1F4C4; PDF
-          </a>
-        </td>
+        <td><small>{{ row.created_at[:16] }}</small></td>
       </tr>
       {% endfor %}
     </tbody>

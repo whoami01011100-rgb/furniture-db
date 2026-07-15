@@ -3,49 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quotation Preview — WoodCraft</title>
-<meta name="description" content="Review your furniture quotation and confirm to save to database.">
+<title>Quotation #{{ quote_id }} — WoodCraft</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<!-- Sab CSS ek file mein → static/style.css -->
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+/* ── VIEWER WRAPPER ─────────────────────────────────────── */
+.viewer-wrap {
+  background: #0d0d1a;
+  border: 1px solid #2a2a3e;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+}
+.viewer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .65rem 1rem; background: #12121e;
+  border-bottom: 1px solid #2a2a3e;
+  flex-wrap: wrap; gap: .5rem;
+}
+.viewer-header > span { font-size: .85rem; font-weight: 600; color: #D4AF37; }
+
+/* ── 2D / 3D TOGGLE ─────────────────────────────────────── */
+.view-toggle {
+  display: flex; gap: 4px;
+  background: #0d0d1a; border: 1px solid #3a3a5e;
+  border-radius: 8px; padding: 3px;
+}
+.view-toggle button {
+  background: transparent; border: none;
+  color: #777; font-size: .8rem; font-weight: 600;
+  padding: .3rem .85rem; border-radius: 6px;
+  cursor: pointer; font-family: inherit;
+  transition: background .18s, color .18s;
+  letter-spacing: .03em;
+}
+.view-toggle button.active {
+  background: #D4AF37; color: #0a0a12;
+}
+.view-toggle button:hover:not(.active) {
+  background: #1e1e32; color: #D4AF37;
+}
+
+/* toolbar for 3D view */
+.viewer-toolbar { display: flex; gap: .45rem; flex-wrap: wrap; }
+.viewer-toolbar button {
+  background: #1a1a2e; border: 1px solid #3a3a5e;
+  color: #aaa; font-size: .74rem; padding: .28rem .65rem;
+  border-radius: 6px; cursor: pointer; font-family: inherit;
+  transition: background .18s, color .18s, border-color .18s;
+}
+.viewer-toolbar button:hover,
+.viewer-toolbar button.active { background: #D4AF37; color: #0a0a12; border-color: #D4AF37; }
+
+/* ── PANELS ──────────────────────────────────────────────── */
+.panel-2d, .panel-3d { display: none; }
+.panel-2d.visible,  .panel-3d.visible  { display: block; }
+
+.drawing-img { width: 100%; display: block; background: #0d0d1a; }
+
+#viewer3d { width: 100%; height: 500px; display: block; background: #0d0d1a; }
+#viewer3d canvas { display: block; }
+
+/* Loading overlay */
+.viewer-pos { position: relative; }
+.viewer-loading {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: .8rem;
+  color: #D4AF37; font-size: .9rem;
+  background: #0d0d1a; z-index: 5;
+  pointer-events: none;
+}
+.spin { font-size: 2rem; animation: spin 1.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Footer */
+.viewer-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .5rem 1rem; background: #12121e;
+  border-top: 1px solid #2a2a3e; flex-wrap: wrap; gap: .4rem;
+}
+.viewer-hint { font-size: .73rem; color: #555; }
+.viewer-dims  { font-size: .78rem; color: #D4AF37; font-weight: 500; }
+</style>
 </head>
 <body>
 
-{% include 'nav.html' %}
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="brand">&#x1FAB5; WoodCraft</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/history">History</a>
+    </div>
+  </div>
+</nav>
 
 <!-- PAGE HEADER -->
 <div class="page-header">
-  <div class="breadcrumb"><a href="/">Home</a> &rsaquo; Quotation Preview</div>
-  <h1>Quotation Preview</h1>
-  <p>Customer: <strong>{{ customer }}</strong>
+  <div class="breadcrumb"><a href="/">Home</a> &rsaquo; Quotation</div>
+  <h1>Quotation Generated</h1>
+  <p>Reference <strong>#{{ quote_id }}</strong> &nbsp;&middot;&nbsp;
+     Customer: <strong>{{ customer }}</strong>
      {% if phone %}&nbsp;&middot;&nbsp; {{ phone }}{% endif %}
-     &nbsp;&middot;&nbsp;
-     <!-- Status badge: confirmed ya preview -->
-     {% if confirmed and quote_id %}
-       <span class="badge-confirmed">&#x2714; Saved to Database #{{ quote_id }}</span>
-     {% else %}
-       <span class="badge-preview">&#x23F3; Preview Only — Not Saved Yet</span>
-     {% endif %}
   </p>
 </div>
 
 <section class="section">
 <div class="result-layout">
 
-  <!-- ══ LEFT: 2D/3D VIEWER + SPECS ══ -->
+  <!-- ══ LEFT: VIEWER + SPECS ══ -->
   <div class="result-left">
 
     <div class="viewer-wrap">
+
       <!-- Header with 2D/3D toggle -->
       <div class="viewer-header">
         <span id="viewerTitle">&#x1F4D0; 2D Drawing &mdash; {{ quote.item_name }}</span>
+
         <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
-          <!-- 2D / 3D toggle buttons -->
+          <!-- 2D / 3D toggle -->
           <div class="view-toggle">
             <button id="btn2d" class="active" onclick="switchView('2d')">&#x1F4D0; 2D</button>
             <button id="btn3d" onclick="switchView('3d')">&#x1F4E6; 3D</button>
           </div>
+
           <!-- 3D toolbar (hidden until 3D active) -->
           <div class="viewer-toolbar" id="toolbar3d" style="display:none;">
             <button id="btnAuto" onclick="toggleAutoRotate()" class="active">&#x21BB; Auto</button>
@@ -57,14 +141,14 @@
         </div>
       </div>
 
-      <!-- 2D Panel -->
+      <!-- ── 2D Panel ── -->
       <div class="panel-2d visible" id="panel2d">
         <img class="drawing-img"
              src="data:image/png;base64,{{ drawing_b64 }}"
              alt="2D drawing of {{ quote.item_name }}">
       </div>
 
-      <!-- 3D Panel -->
+      <!-- ── 3D Panel ── -->
       <div class="panel-3d" id="panel3d">
         <div class="viewer-pos">
           <div id="viewer3d"></div>
@@ -75,7 +159,7 @@
         </div>
       </div>
 
-      <!-- Viewer footer bar -->
+      <!-- Footer -->
       <div class="viewer-footer">
         <span class="viewer-hint" id="viewerHint">&#x1F4CF; Front elevation view</span>
         <span class="viewer-dims">
@@ -85,7 +169,7 @@
       </div>
     </div>
 
-    <!-- Specifications table -->
+    <!-- Specs -->
     <div class="spec-card">
       <h3>Specifications</h3>
       <table class="spec-table">
@@ -100,21 +184,16 @@
     </div>
   </div>
 
-  <!-- ══ RIGHT: PRICE CARD + ACTIONS ══ -->
+  <!-- ══ RIGHT: PRICE CARD ══ -->
   <div class="result-right">
     <div class="quote-card">
       <div class="quote-header">
         <div class="quote-logo">&#x1FAB5; WoodCraft</div>
-        {% if confirmed and quote_id %}
-          <div class="quote-ref">Saved #{{ quote_id }}</div>
-        {% else %}
-          <div class="quote-ref" style="color:#E8A020;">Preview</div>
-        {% endif %}
+        <div class="quote-ref">Quotation #{{ quote_id }}</div>
       </div>
       <h2 class="quote-item-title">{{ quote.item_name }}</h2>
       <p class="quote-sub">{{ quote.material }} &nbsp;&middot;&nbsp; {{ quote.finish }}</p>
 
-      <!-- Price breakdown rows -->
       <div class="price-breakdown">
         <div class="pb-row">
           <span>&#x1FAB5; Material Cost</span>
@@ -152,31 +231,13 @@
         Approximate estimate. Final price may vary based on design complexity and site conditions.
       </div>
 
-      <!-- ══════════════════════════════════════════════
-           ACTION BUTTONS
-           ══════════════════════════════════════════════ -->
       <div class="quote-actions">
-
-        {% if confirmed and quote_id %}
-          <!-- ALREADY CONFIRMED → Show PDF download + New Quotation -->
-          <a href="/pdf/{{ quote_id }}" class="btn-pdf" id="pdfBtn">
-            &#x1F4C4; Download PDF
-          </a>
-          <a href="/" class="btn-primary">+ New Quotation</a>
-
-        {% else %}
-          <!-- NOT YET CONFIRMED → Show Confirm button -->
-          <button id="confirmBtn" class="btn-confirm" onclick="confirmQuotation()">
-            <span class="btn-text">&#x2705; Confirm &amp; Save to Database</span>
-            <span class="btn-loader" style="display:none;">&#x23F3; Saving...</span>
-          </button>
-          <a href="/" class="btn-outline">&#x2715; Cancel</a>
-        {% endif %}
-
+        <button onclick="window.print()" class="btn-outline">Print</button>
+        <a href="/" class="btn-primary">+ New Quotation</a>
       </div>
     </div>
 
-    <!-- Cost Breakdown bar chart -->
+    <!-- Bar chart -->
     <div class="bar-card">
       <h3>Cost Breakdown</h3>
       {% set ts = quote.subtotal %}
@@ -207,41 +268,370 @@
 </section>
 
 <footer class="footer">
-  <p>&#x1FAB5; WoodCraft Furniture &nbsp;|&nbsp; All prices are indicative estimates</p>
+  <p>WoodCraft Furniture &nbsp;|&nbsp; Demo System &nbsp;|&nbsp; All prices are indicative estimates</p>
 </footer>
 
-<!--
-  Python se aaye data ko JavaScript mein pass karna:
-  Jinja2 template (double curly braces) syntax se Python variables JS variables ban jaate hain.
-
-  BOXES     → viewer_3d.py → get_furniture_boxes() function ka output
-  Furn_L/W/H→ User ne form mein jo size dala
-  ITEM      → furniture ka naam
-  IS_CONFIRMED → kya ye already save ho chuka hai?
--->
+<!-- ═══════════════════════════════════════════════════════
+     DATA from Python backend
+═══════════════════════════════════════════════════════ -->
 <script>
-  var BOXES        = {{ boxes_json | safe }};
-  var Furn_L       = {{ quote.L }};
-  var Furn_W       = {{ quote.W }};
-  var Furn_H       = {{ quote.H }};
-  var ITEM         = "{{ quote.item_name }}";
-  var MATERIAL     = "{{ quote.material }}";
-  var FINISH       = "{{ quote.finish }}";
-  var IS_CONFIRMED = {{ 'true' if confirmed else 'false' }};
-  var QUOTE_ID     = {% if quote_id %}{{ quote_id }}{% else %}null{% endif %};
+  var BOXES   = {{ boxes_json | safe }};
+  var Furn_L  = {{ quote.L }};
+  var Furn_W  = {{ quote.W }};
+  var Furn_H  = {{ quote.H }};
+  var ITEM    = "{{ quote.item_name }}";
 </script>
 
-<!-- Three.js 3D library (local file, no internet needed) -->
+<!-- Three.js local file -->
 <script src="{{ url_for('static', filename='three.min.js') }}"></script>
 
-<!-- 3D Viewer JS → static/viewer3d.js -->
-<script src="{{ url_for('static', filename='viewer3d.js') }}"></script>
+<!-- ═══════════════════════════════════════════════════════
+     2D / 3D TOGGLE LOGIC
+═══════════════════════════════════════════════════════ -->
+<script>
+var _3dInitialised = false;
+var _controls, _renderer, _animId;
 
-<!-- Confirm & Save logic -->
-<script src="{{ url_for('static', filename='confirm.js') }}"></script>
+function switchView(mode) {
+  var p2 = document.getElementById('panel2d');
+  var p3 = document.getElementById('panel3d');
+  var b2 = document.getElementById('btn2d');
+  var b3 = document.getElementById('btn3d');
+  var tb = document.getElementById('toolbar3d');
+  var title = document.getElementById('viewerTitle');
+  var hint  = document.getElementById('viewerHint');
 
-<!-- Shared animations → static/script.js -->
+  if (mode === '2d') {
+    p2.classList.add('visible');    p3.classList.remove('visible');
+    b2.classList.add('active');     b3.classList.remove('active');
+    tb.style.display = 'none';
+    title.textContent = '\uD83D\uDCD0 2D Drawing \u2014 ' + ITEM;
+    hint.textContent  = '\uD83D\uDCCF Front elevation view';
+    // pause 3D animation
+    if (_animId) { cancelAnimationFrame(_animId); _animId = null; }
+  } else {
+    p3.classList.add('visible');    p2.classList.remove('visible');
+    b3.classList.add('active');     b2.classList.remove('active');
+    tb.style.display = 'flex';
+    title.textContent = '\uD83D\uDCE6 3D View \u2014 ' + ITEM;
+    hint.textContent  = '\uD83D\uDDB1 Drag=Rotate \u00B7 Scroll=Zoom \u00B7 Right-drag=Pan';
+    if (!_3dInitialised) { init3D(); }
+    else { animate3D(); }
+  }
+}
+
+// ── OrbitControls (inlined) ──────────────────────────────
+function OrbitControls(object, domElement) {
+  this.object = object;
+  this.domElement = domElement;
+  this.enabled = true;
+  this.target = new THREE.Vector3();
+  this.minDistance = 0; this.maxDistance = Infinity;
+  this.autoRotate = true; this.autoRotateSpeed = 2.0;
+  this.enableDamping = true; this.dampingFactor = 0.05;
+
+  var scope = this;
+  var STATE = { NONE:-1, ROTATE:0, DOLLY:1, PAN:2 };
+  var state = STATE.NONE;
+  var EPS = 1e-6;
+  var spherical = new THREE.Spherical();
+  var sphericalDelta = new THREE.Spherical();
+  var scale = 1;
+  var panOffset = new THREE.Vector3();
+  var rotateStart = new THREE.Vector2();
+  var rotateEnd = new THREE.Vector2();
+  var rotateDelta = new THREE.Vector2();
+  var panStart = new THREE.Vector2();
+  var panEnd = new THREE.Vector2();
+  var panDelta = new THREE.Vector2();
+  var twoPI = 2 * Math.PI;
+
+  this.update = (function() {
+    var offset = new THREE.Vector3();
+    var quat = new THREE.Quaternion().setFromUnitVectors(object.up, new THREE.Vector3(0,1,0));
+    var quatInverse = quat.clone().invert();
+    var lastPosition = new THREE.Vector3();
+    var lastQuaternion = new THREE.Quaternion();
+    return function update() {
+      var position = scope.object.position;
+      offset.copy(position).sub(scope.target);
+      offset.applyQuaternion(quat);
+      spherical.setFromVector3(offset);
+      if (scope.autoRotate && state === STATE.NONE) {
+        spherical.theta += (twoPI / 60 / 60) * scope.autoRotateSpeed;
+      }
+      spherical.phi = Math.max(EPS, Math.min(Math.PI - EPS, spherical.phi));
+      spherical.makeSafe();
+      spherical.theta += sphericalDelta.theta;
+      spherical.phi   += sphericalDelta.phi;
+      spherical.radius = Math.max(scope.minDistance, Math.min(scope.maxDistance, spherical.radius * scale));
+      scope.target.addScaledVector(panOffset, 1);
+      offset.setFromSpherical(spherical);
+      offset.applyQuaternion(quatInverse);
+      position.copy(scope.target).add(offset);
+      scope.object.lookAt(scope.target);
+      if (scope.enableDamping) {
+        sphericalDelta.theta *= (1 - scope.dampingFactor);
+        sphericalDelta.phi   *= (1 - scope.dampingFactor);
+        panOffset.multiplyScalar(1 - scope.dampingFactor);
+      } else {
+        sphericalDelta.set(0,0,0);
+        panOffset.set(0,0,0);
+      }
+      scale = 1;
+      return true;
+    };
+  })();
+
+  this.dispose = function() {
+    scope.domElement.removeEventListener('mousedown', onMouseDown);
+    scope.domElement.removeEventListener('wheel', onMouseWheel);
+  };
+
+  function onMouseDown(ev) {
+    if (!scope.enabled) return;
+    ev.preventDefault();
+    if (ev.button === 0) { state = STATE.ROTATE; rotateStart.set(ev.clientX, ev.clientY); }
+    else if (ev.button === 2) { state = STATE.PAN; panStart.set(ev.clientX, ev.clientY); }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+  function onMouseMove(ev) {
+    if (!scope.enabled) return;
+    ev.preventDefault();
+    if (state === STATE.ROTATE) {
+      rotateEnd.set(ev.clientX, ev.clientY);
+      rotateDelta.subVectors(rotateEnd, rotateStart);
+      var el = scope.domElement;
+      sphericalDelta.theta -= (twoPI * rotateDelta.x) / (el.clientHeight * 4);
+      sphericalDelta.phi   -= (twoPI * rotateDelta.y) / (el.clientHeight * 4);
+      rotateStart.copy(rotateEnd);
+    } else if (state === STATE.PAN) {
+      panEnd.set(ev.clientX, ev.clientY);
+      panDelta.subVectors(panEnd, panStart).multiplyScalar(0.002);
+      panOffset.addScaledVector(new THREE.Vector3(-panDelta.x, panDelta.y, 0), 1);
+      panStart.copy(panEnd);
+    }
+    scope.update();
+  }
+  function onMouseUp() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    state = STATE.NONE;
+  }
+  function onMouseWheel(ev) {
+    if (!scope.enabled) return;
+    ev.preventDefault();
+    scale *= (ev.deltaY < 0) ? (1/0.92) : 0.92;
+    scope.update();
+  }
+  function onContextMenu(ev) { ev.preventDefault(); }
+
+  domElement.addEventListener('mousedown', onMouseDown, false);
+  domElement.addEventListener('wheel', onMouseWheel, {passive:false});
+  domElement.addEventListener('contextmenu', onContextMenu, false);
+
+  // Touch
+  function onTouchStart(ev) {
+    ev.preventDefault();
+    if (ev.touches.length === 1) { state = STATE.ROTATE; rotateStart.set(ev.touches[0].pageX, ev.touches[0].pageY); }
+  }
+  function onTouchMove(ev) {
+    ev.preventDefault();
+    if (ev.touches.length === 1 && state === STATE.ROTATE) {
+      rotateEnd.set(ev.touches[0].pageX, ev.touches[0].pageY);
+      rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(0.005);
+      sphericalDelta.theta -= rotateDelta.x * 0.8;
+      sphericalDelta.phi   -= rotateDelta.y * 0.8;
+      rotateStart.copy(rotateEnd);
+      scope.update();
+    }
+  }
+  function onTouchEnd() { state = STATE.NONE; }
+  domElement.addEventListener('touchstart', onTouchStart, {passive:false});
+  domElement.addEventListener('touchmove',  onTouchMove,  {passive:false});
+  domElement.addEventListener('touchend',   onTouchEnd,   false);
+
+  Object.assign(this, THREE.EventDispatcher.prototype);
+  this.update();
+}
+
+// ── 3D Scene init ────────────────────────────────────────
+function init3D() {
+  _3dInitialised = true;
+  var container = document.getElementById('viewer3d');
+  var W = container.clientWidth || 700;
+  var H = 500;
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d0d1a);
+  scene.fog = new THREE.FogExp2(0x0d0d1a, 0.005);
+
+  var camera = new THREE.PerspectiveCamera(45, W/H, 0.05, 500);
+  _renderer = new THREE.WebGLRenderer({ antialias: true });
+  _renderer.setSize(W, H);
+  _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  _renderer.shadowMap.enabled = true;
+  _renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(_renderer.domElement);
+
+  // ── Lights ──────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0x334466, 0.8));
+
+  var sun = new THREE.DirectionalLight(0xffd060, 1.4);
+  sun.position.set(12, 18, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = sun.shadow.mapSize.height = 2048;
+  sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 200;
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -30;
+  sun.shadow.camera.right = sun.shadow.camera.top = 30;
+  scene.add(sun);
+
+  var fill = new THREE.DirectionalLight(0x6699ee, 0.5);
+  fill.position.set(-10, 8, -5); scene.add(fill);
+
+  var rim = new THREE.DirectionalLight(0xff9933, 0.30);
+  rim.position.set(0, 4, -15); scene.add(rim);
+
+  scene.add(new THREE.HemisphereLight(0x3355aa, 0x221100, 0.45));
+
+  // ── Grid ────────────────────────────────────────────────
+  var maxDim = Math.max(Furn_L, Furn_W, Furn_H);
+  var gridSz = Math.max(maxDim * 2.8, 6);
+  scene.add(new THREE.GridHelper(gridSz, 20, 0x2a2a4a, 0x1a1a32));
+
+  var shadowPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(gridSz, gridSz),
+    new THREE.ShadowMaterial({ opacity: 0.25 })
+  );
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
+
+  // ── Build furniture from boxes ───────────────────────────
+  var group = new THREE.Group();
+
+  BOXES.forEach(function(b) {
+    var w = b.x1 - b.x0;
+    var h = b.z1 - b.z0;
+    var d = b.y1 - b.y0;
+    if (w <= 0.001 || h <= 0.001 || d <= 0.001) return;
+
+    var geo = new THREE.BoxGeometry(w, h, d);
+    var lbl = (b.label || '').toLowerCase();
+    var isMetal  = lbl.indexOf('handle') >= 0 || lbl.indexOf('hinge') >= 0 || lbl.indexOf('rail') >= 0;
+    var isFabric = lbl.indexOf('mattress') >= 0 || lbl.indexOf('cushion') >= 0 || lbl.indexOf('pillow') >= 0;
+
+    var mat = new THREE.MeshPhongMaterial({
+      color:     new THREE.Color(b.color),
+      shininess: isMetal ? 130 : (isFabric ? 8 : 60),
+      specular:  new THREE.Color(isMetal ? 0xaaaaaa : 0x111111),
+    });
+
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow    = true;
+    mesh.receiveShadow = true;
+    mesh.position.set(
+      (b.x0 + b.x1) / 2,
+      (b.z0 + b.z1) / 2,
+      (b.y0 + b.y1) / 2
+    );
+
+    var edges   = new THREE.EdgesGeometry(geo, 12);
+    var lineMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 });
+    var lines   = new THREE.LineSegments(edges, lineMat);
+    lines.position.copy(mesh.position);
+
+    group.add(mesh);
+    group.add(lines);
+  });
+
+  group.position.set(-Furn_L / 2, 0, -Furn_W / 2);
+  scene.add(group);
+
+  // ── Camera & Controls ────────────────────────────────────
+  var camDist = maxDim * 1.65;
+  camera.position.set(camDist * 0.9, camDist * 0.75, camDist * 1.1);
+  var camTarget = new THREE.Vector3(0, Furn_H / 2, 0);
+  camera.lookAt(camTarget);
+
+  _controls = new OrbitControls(camera, _renderer.domElement);
+  _controls.target.copy(camTarget);
+  _controls.minDistance    = maxDim * 0.15;
+  _controls.maxDistance    = maxDim * 7;
+  _controls.autoRotate     = true;
+  _controls.autoRotateSpeed = 1.8;
+  _controls.enableDamping  = true;
+  _controls.dampingFactor  = 0.06;
+  _controls.update();
+
+  // Stop auto-rotate on user interaction
+  _renderer.domElement.addEventListener('mousedown', function() {
+    _controls.autoRotate = false;
+    var btn = document.getElementById('btnAuto');
+    if (btn) { btn.classList.remove('active'); btn.textContent = '\u21BB Auto'; }
+  });
+
+  // Hide loading overlay on first render
+  var overlayHidden = false;
+
+  // ── Preset views ─────────────────────────────────────────
+  window.setView = function(v) {
+    var d = camDist;
+    var pos = {
+      front: new THREE.Vector3(0,       Furn_H/2, d * 1.3),
+      side:  new THREE.Vector3(d * 1.3, Furn_H/2, 0),
+      top:   new THREE.Vector3(0.01,    d * 2.5,  0.01),
+      iso:   new THREE.Vector3(d*0.9,   d*0.75,   d*1.1),
+    }[v];
+    if (!pos) return;
+    camera.position.copy(pos);
+    camera.lookAt(camTarget);
+    _controls.target.copy(camTarget);
+    _controls.update();
+  };
+
+  window.toggleAutoRotate = function() {
+    _controls.autoRotate = !_controls.autoRotate;
+    var btn = document.getElementById('btnAuto');
+    if (btn) {
+      btn.classList.toggle('active', _controls.autoRotate);
+      btn.textContent = _controls.autoRotate ? '\u23F8 Stop' : '\u21BB Auto';
+    }
+  };
+
+  // ── Animation loop ───────────────────────────────────────
+  function tick() {
+    _animId = requestAnimationFrame(tick);
+    _controls.update();
+    _renderer.render(scene, camera);
+    if (!overlayHidden) {
+      overlayHidden = true;
+      var ov = document.getElementById('loadingOverlay');
+      if (ov) ov.style.display = 'none';
+    }
+  }
+  _animId = requestAnimationFrame(tick);
+
+  // ── Resize ───────────────────────────────────────────────
+  window.addEventListener('resize', function() {
+    var nw = container.clientWidth;
+    camera.aspect = nw / H;
+    camera.updateProjectionMatrix();
+    _renderer.setSize(nw, H);
+  });
+}
+
+function animate3D() {
+  if (_controls && _renderer && !_animId) {
+    (function tick() {
+      _animId = requestAnimationFrame(tick);
+      _controls.update();
+    })();
+  }
+}
+</script>
+
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 </body>
 </html>
